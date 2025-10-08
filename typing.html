@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sesi Pekerjaan Input Data</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* Gaya dasar dan font */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1f2937; /* abu-abu gelap */
+            color: #f3f4f6;
+            min-height: 100vh;
+        }
+        /* Custom animation for professional toast (Slide-in from right) */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        .animate-slideIn {
+            animation: slideIn 0.5s ease-out forwards;
+        }
+        /* Style for click to dismiss transition (Slide-out to right) */
+        .toast-dismissing {
+            transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        /* Styling tambahan untuk area mengetik */
+        #quote-display {
+            background-color: #f9fafb;
+            color: #1f2937;
+            padding: 1.25rem;
+            border-radius: 0.5rem;
+            font-size: 1.1rem;
+            line-height: 1.75;
+            text-align: justify;
+            min-height: 8rem;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+            word-break: normal;
+            white-space: normal;
+            overflow-wrap: break-word; 
+            word-wrap: break-word; 
+        }
+        .word {
+            white-space: nowrap; 
+            display: inline; 
+        }
+        .correct { color: #10b981; }
+        .incorrect { 
+            background-color: #ef4444; 
+            color: white; 
+            border-radius: 2px; 
+            box-shadow: 0 0 5px rgba(239, 68, 68, 0.5);
+        }
+        .current { 
+            border-bottom: 3px solid #3b82f6; 
+            padding-bottom: 2px;
+        }
+        #quote-input {
+            font-family: monospace;
+            font-size: 1.1rem;
+            outline: none;
+            box-sizing: border-box;
+            resize: none;
+        }
+        .management-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 40;
+            overflow-y: auto; 
+            background-color: #1f2937; 
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+<div id="alertContainer" class="fixed bottom-4 right-4 z-50">
+    </div>
+
+<div id="mainContainer" class="max-w-7xl mx-auto">
+    
+    <div id="typing-panel-content" class="bg-gray-800 p-6 rounded-xl shadow-2xl relative">
+        <div class="flex justify-between items-start mb-6">
+            <h1 class="text-3xl font-bold text-yellow-400">Sesi Pekerjaan Input Data</h1>
+            <button id="toggleManagementBtn" onclick="toggleManagementPanel()" 
+                    class="p-3 bg-gray-700 hover:bg-gray-600 rounded-full text-gray-300 transition duration-200 shadow-md transform hover:rotate-12">
+                <i class="fas fa-cog fa-lg"></i>
+            </button>
+        </div>
+
+        <div id="quote-display" class="mb-6 shadow-md">
+            Memuat tugas pekerjaan...
+        </div>
+        
+        <textarea id="quote-input" 
+                  placeholder="Ketik di sini untuk memulai pekerjaan..." 
+                  oninput="processInput()" 
+                  class="w-full h-24 p-3 text-gray-800 border-2 border-gray-600 rounded-lg focus:border-blue-500 transition duration-200" 
+                  disabled></textarea>
+
+        <div class="flex justify-between items-center bg-gray-700 p-4 rounded-lg mt-4 shadow-inner">
+            <div class="text-center">WPM: <span id="wpm" class="text-yellow-400 font-extrabold text-xl">0</span></div>
+            <div class="text-center">Akurasi: <span id="accuracy" class="text-yellow-400 font-extrabold text-xl">0%</span></div>
+            <div class="text-center">Waktu: <span id="time" class="text-yellow-400 font-extrabold text-xl">0s</span></div>
+            <div class="text-center">
+                <i class="fas fa-coins text-yellow-500 mr-1"></i> Pendapatan: 
+                <span id="coinBalance" class="text-yellow-500 font-extrabold text-xl">0</span>
+            </div>
+        </div>
+        
+        <div class="flex justify-end mt-6">
+            <button onclick="transferCoins()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg transition duration-200 shadow-lg">
+                <i class="fas fa-wallet mr-1"></i> Transfer Gaji
+            </button>
+        </div>
+    </div>
+
+    <div id="management-panel" class="bg-gray-800 p-6 rounded-xl shadow-2xl hidden">
+        <h2 class="text-2xl font-bold text-green-400 mb-6 flex justify-between items-center">
+            Manajemen Tugas Input
+            <button onclick="toggleManagementPanel()" class="p-2 text-gray-300 hover:text-white rounded-full hover:bg-gray-700">
+                <i class="fas fa-times fa-lg"></i>
+            </button>
+        </h2>
+        
+        <div class="mb-8 p-4 bg-gray-700 rounded-lg shadow-md">
+            <h3 class="text-xl font-semibold mb-3">Tambah Tugas Baru</h3>
+            <textarea id="newText" 
+                      placeholder="Masukkan tugas teks baru untuk pekerjaan input data (min. 10 karakter)..." 
+                      class="w-full h-20 p-3 text-gray-800 border-2 border-gray-600 rounded-lg focus:border-green-500 transition duration-200 resize-none"></textarea>
+            <button onclick="addText()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg mt-3 transition duration-200">
+                <i class="fas fa-plus mr-2"></i> Simpan Tugas ke Database
+            </button>
+        </div>
+
+        <div>
+            <h3 class="text-xl font-semibold mb-3">Daftar Tugas Tersimpan (<span id="textCount">0</span>)</h3>
+            <p class="text-sm text-gray-400 mb-3">Klik tombol 'Hapus' untuk menghapus tugas dari database.</p>
+            <ul id="quotesList" class="max-h-96 overflow-y-auto pr-2">
+                </ul>
+        </div>
+    </div>
+
+</div>
+
+<script type="module">
+    // Import modul Firebase. Menambahkan set, get, dan update.
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getDatabase, ref, push, remove, onValue, set, get, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+    // --- 1. Konfigurasi dan Inisialisasi Firebase ---
+    const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : JSON.stringify({
+      apiKey: "AIzaSyBHpRt8cs00RI3rRcELKhkYRID5svpSZoY",
+      authDomain: "myyg4m5.firebaseapp.com",
+      databaseURL: "https://myyg4m5-default-rtdb.firebaseio.com",
+      projectId: "myyg4m5",
+      storageBucket: "myyg4m5.firebasestorage.app",
+      messagingSenderId: "204097552587",
+      appId: "1:204097552587:web:bd2dbb5d2c02c342fc5b4e"
+    }));
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const textsRef = ref(db, 'user_texts'); 
+    
+    // Path Firebase untuk Saldo
+    const USER_ID = 'user_001'; 
+    const balanceRef = ref(db, `balances/${USER_ID}/typing_balance`); 
+    const walletRef = ref(db, `balances/${USER_ID}/e_wallet_balance`); 
+    
+    // Variabel global
+    let allQuotes = []; 
+    let timer;
+    let startTime;
+    let quoteToType;
+    let coinBalance = 0; 
+    
+    // Variabel untuk Syarat Kerja & Gaji
+    const MIN_WPM_REQUIREMENT = 30; 
+    const MIN_ACCURACY_REQUIREMENT = 95; 
+    const BASE_PAY = 5; 
+    
+    // Referensi Elemen UI
+    const quoteDisplay = document.getElementById('quote-display');
+    const quoteInput = document.getElementById('quote-input');
+    const wpmDisplay = document.getElementById('wpm');
+    const accuracyDisplay = document.getElementById('accuracy');
+    const timeDisplay = document.getElementById('time');
+    const typingPanelContent = document.getElementById('typing-panel-content');
+    const managementPanel = document.getElementById('management-panel'); 
+    const coinBalanceDisplay = document.getElementById('coinBalance');
+
+    // --- 2. Fungsi Utilitas UI (Toast Baru) ---
+
+    // PERUBAHAN: Fungsi alertMessage baru dengan animasi & click-to-dismiss
+    const alertMessage = (message, type = 'info') => {
+        const alertContainer = document.getElementById('alertContainer');
+        const bgColor = type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500';
+        const icon = type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-times-circle' : 'fa-info-circle';
+
+        const alertDiv = document.createElement('div');
+        // Tambahkan kelas animasi dan kursor
+        alertDiv.className = `flex items-center ${bgColor} text-white text-sm font-bold px-4 py-3 rounded-lg shadow-2xl mb-2 cursor-pointer max-w-xs animate-slideIn`;
+        alertDiv.innerHTML = `<i class="fas ${icon} mr-3"></i> <span>${message}</span>`;
+        
+        // Fungsi untuk menghilangkan toast dengan animasi
+        const dismissToast = (element) => {
+            element.classList.add('toast-dismissing');
+            setTimeout(() => {
+                element.remove();
+            }, 500); // Harus cocok dengan waktu transisi CSS
+        };
+
+        // 1. Fitur Click-to-dismiss
+        alertDiv.onclick = () => dismissToast(alertDiv);
+        
+        alertContainer.prepend(alertDiv); // prepend agar notifikasi baru muncul di atas
+        
+        // 2. Auto-dismiss setelah 5 detik
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                dismissToast(alertDiv);
+            }
+        }, 5000);
+    };
+    
+    window.toggleManagementPanel = () => {
+        const isManagementHidden = managementPanel.classList.contains('hidden');
+        if (isManagementHidden) {
+            managementPanel.classList.remove('hidden');
+            typingPanelContent.classList.add('hidden');
+            managementPanel.classList.add('management-overlay'); 
+        } else {
+            managementPanel.classList.add('hidden');
+            typingPanelContent.classList.remove('hidden');
+            managementPanel.classList.remove('management-overlay'); 
+        }
+    };
+
+    const loadCoinBalance = () => {
+        onValue(balanceRef, (snapshot) => {
+            coinBalance = snapshot.val() || 0; 
+            coinBalanceDisplay.textContent = coinBalance; 
+        }, (error) => {
+            console.error("Gagal memuat saldo pendapatan dari Firebase:", error);
+            alertMessage('Gagal memuat pendapatan dari database.', 'error');
+        });
+    };
+    
+    window.transferCoins = async () => {
+        if (coinBalance <= 0) {
+            alertMessage('Saldo Pendapatan 0. Selesaikan pekerjaan untuk mendapat gaji!', 'error');
+            return;
+        }
+
+        const transferAmount = coinBalance;
+        alertMessage(`Mempersiapkan transfer ${transferAmount} Gaji...`, 'info');
+        
+        try {
+            const walletSnapshot = await get(walletRef);
+            const currentWalletBalance = walletSnapshot.val() || 0;
+            const newWalletBalance = currentWalletBalance + transferAmount;
+            
+            await update(ref(db, `balances/${USER_ID}`), {
+                typing_balance: 0, 
+                e_wallet_balance: newWalletBalance 
+            });
+            
+            alertMessage(`Transfer Gaji Berhasil! ${transferAmount} Koin dikirim ke Dompet Virtual. Saldo Dompet: ${newWalletBalance}.`, 'success');
+
+        } catch (error) {
+            console.error("Gagal transfer koin ke Firebase:", error);
+            alertMessage('Gagal transfer koin. Cek koneksi.', 'error');
+        }
+    };
+
+
+    // --- 3. Fungsi Manajemen Teks Firebase (CRUD) ---
+
+    window.addText = async () => {
+        const newTextarea = document.getElementById('newText');
+        const newText = newTextarea.value.trim();
+        
+        if (newText.length > 10) { 
+            try {
+                await push(textsRef, { text: newText, created: Date.now() });
+                newTextarea.value = '';
+                alertMessage('Tugas berhasil ditambahkan!', 'success');
+            } catch (error) {
+                console.error("Gagal menambahkan teks:", error);
+                alertMessage('Gagal menambahkan tugas. Cek database.', 'error');
+            }
+        } else {
+            alertMessage('Tugas harus memiliki minimal 10 karakter.', 'info');
+        }
+    };
+
+    window.deleteText = async (id) => {
+        alertMessage('Menghapus tugas...', 'info'); 
+        
+        try {
+            const itemRef = ref(db, `user_texts/${id}`); 
+            await remove(itemRef);
+            alertMessage('Tugas berhasil dihapus!', 'success');
+        } catch (error) {
+            console.error("Gagal menghapus teks:", error);
+            alertMessage('Gagal menghapus tugas. Lihat konsol untuk detail.', 'error');
+        }
+    };
+
+    // Memuat Teks (Real-time Listener)
+    const loadTexts = () => {
+        const quotesList = document.getElementById('quotesList');
+        const textCountDisplay = document.getElementById('textCount');
+
+        onValue(textsRef, (snapshot) => {
+            allQuotes = []; 
+            const data = snapshot.val();
+            quotesList.innerHTML = ''; 
+
+            if (data) {
+                Object.keys(data).forEach(key => {
+                    const quoteText = data[key].text;
+                    allQuotes.push({ id: key, text: quoteText }); 
+
+                    const li = document.createElement('li');
+                    li.className = 'flex justify-between items-center p-3 bg-gray-700 hover:bg-gray-600 transition duration-150 rounded-lg mb-2 border border-gray-600';
+                    li.innerHTML = `
+                        <span class="text-sm text-gray-200 flex-1 mr-4 overflow-hidden truncate">${quoteText}</span>
+                        <button onclick="deleteText('${key}')" class="text-red-400 hover:text-red-300 transition duration-150 p-2 rounded-full hover:bg-gray-800">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    `;
+                    quotesList.appendChild(li);
+                });
+            } else {
+                 quotesList.innerHTML = '<li class="text-gray-400 p-3 text-center">Tidak ada tugas tersimpan. Silakan tambah tugas baru!</li>';
+            }
+            
+            textCountDisplay.textContent = allQuotes.length;
+
+            if (allQuotes.length > 0) {
+                 // PERUBAHAN: Auto-start pekerjaan jika teks tersedia
+                 if (!timer) startGame(); 
+            } else {
+                 quoteDisplay.innerHTML = '<span class="text-red-500">Tidak ada tugas untuk dikerjakan. Tambahkan tugas di panel Manajemen Tugas Input.</span>';
+            }
+        }, (error) => {
+            console.error("Gagal membaca data dari Firebase:", error);
+            quoteDisplay.innerHTML = '<span class="text-red-500">Gagal memuat tugas dari database. Cek koneksi Anda.</span>';
+        });
+    };
+    
+    loadTexts();
+    loadCoinBalance(); 
+
+    // --- 4. Logika Sesi Pekerjaan (Auto-Start) ---
+    
+    const getRandomQuote = () => {
+        if (allQuotes.length === 0) return "Tidak ada teks yang tersedia.";
+        const RNG_SEED = 0.5;
+        const randomIndex = Math.floor(RNG_SEED * allQuotes.length); 
+        return allQuotes[randomIndex].text; 
+    };
+
+    const loadQuote = () => {
+        quoteToType = getRandomQuote();
+        const tokens = quoteToType.match(/(\S+|\s)/g) || []; 
+
+        quoteDisplay.innerHTML = tokens.map(token => {
+            if (token === ' ') {
+                return `<span class="char">&nbsp;</span>`;
+            } else {
+                const wordSpans = token.split('').map(char => {
+                    return `<span class="char">${char}</span>`; 
+                }).join('');
+                return `<span class="word">${wordSpans}</span>`;
+            }
+        }).join('');
+    };
+
+    window.startGame = () => {
+        if (allQuotes.length === 0) {
+            // alertMessage('Tidak ada tugas untuk memulai. Silakan tambahkan tugas di panel Manajemen.', 'error'); // Tidak perlu, karena sudah ditangani loadTexts
+            return;
+        }
+
+        loadQuote();
+        quoteInput.value = '';
+        quoteInput.disabled = false;
+        quoteInput.focus();
+
+        wpmDisplay.textContent = 0;
+        accuracyDisplay.textContent = '0%';
+        timeDisplay.textContent = '0s';
+
+        if (timer) clearInterval(timer);
+        
+        startTime = new Date().getTime();
+        timer = setInterval(updateTimer, 1000);
+    };
+
+    const updateTimer = () => {
+        const elapsed = Math.floor((new Date().getTime() - startTime) / 1000);
+        timeDisplay.textContent = `${elapsed}s`;
+        
+        const typedText = quoteInput.value;
+        const targetChars = quoteDisplay.querySelectorAll('.char');
+        let correctChars = 0;
+        
+        targetChars.forEach((span, index) => {
+            const targetChar = span.textContent === '\u00A0' ? ' ' : span.textContent; 
+            if (typedText[index] === targetChar) {
+                correctChars++;
+            }
+        });
+        
+        const netWPM = ((correctChars / 5) / (elapsed / 60)) || 0;
+        wpmDisplay.textContent = Math.round(netWPM);
+    };
+
+    window.processInput = () => {
+        const typedText = quoteInput.value;
+        const targetChars = quoteDisplay.querySelectorAll('.char'); 
+
+        let correctCount = 0;
+        let isComplete = true;
+
+        targetChars.forEach((charSpan, index) => {
+            const char = charSpan.textContent === '\u00A0' ? ' ' : charSpan.textContent; 
+            const typedChar = typedText[index];
+
+            charSpan.classList.remove('correct', 'incorrect', 'current');
+
+            if (typedChar === undefined) {
+                isComplete = false;
+                if (index === typedText.length) {
+                    charSpan.classList.add('current'); 
+                }
+            } else if (typedChar === char) {
+                charSpan.classList.add('correct');
+                correctCount++;
+            } else {
+                charSpan.classList.add('incorrect');
+                isComplete = false;
+            }
+        });
+        
+        if (typedText.length === quoteToType.length && isComplete) {
+            finishGame(correctCount, typedText.length);
+        }
+        if (typedText.length > quoteToType.length) {
+             quoteInput.value = quoteToType;
+             processInput(); 
+             finishGame(correctCount, quoteToType.length);
+        }
+    };
+    
+    const finishGame = (correctChars, totalTargetChars) => {
+        if (!timer) return; 
+        clearInterval(timer);
+        timer = null;
+        
+        const timeTaken = (new Date().getTime() - startTime) / 1000;
+        const finalWPM = Math.round((correctChars / 5) / (timeTaken / 60) || 0);
+        const accuracy = ((correctChars / totalTargetChars) * 100).toFixed(2);
+        
+        wpmDisplay.textContent = finalWPM;
+        accuracyDisplay.textContent = `${accuracy}%`;
+        timeDisplay.textContent = `${timeTaken.toFixed(1)}s`;
+
+        quoteInput.disabled = true;
+        
+        // --- Logika Pemberian Gaji (Firebase) ---
+        let reward = 0;
+        let successMessage = `Laporan Kinerja Tugas: WPM: ${finalWPM}, Akurasi: ${accuracy}%`;
+        
+        if (finalWPM >= MIN_WPM_REQUIREMENT && parseFloat(accuracy) >= MIN_ACCURACY_REQUIREMENT) {
+            const wpmBonus = Math.floor((finalWPM - MIN_WPM_REQUIREMENT) / 5); 
+            reward = BASE_PAY + wpmBonus;
+            
+            const newBalance = coinBalance + reward;
+            
+            // Simpan saldo BARU ke Firebase
+            set(balanceRef, newBalance)
+                .then(() => {
+                    successMessage += `. SUKSES! Gaji Anda: ${reward} Koin. Total Pendapatan: ${newBalance} Koin. 💰`;
+                    alertMessage(successMessage, 'success');
+                    // PERUBAHAN: Auto-start pekerjaan berikutnya
+                    startGame(); 
+                })
+                .catch(error => {
+                    console.error("Gagal menyimpan gaji ke Firebase:", error);
+                    alertMessage(`Gagal menyimpan gaji. Anda mendapat ${reward} Koin, tapi terjadi kesalahan server.`, 'error');
+                    // Gagal simpan, coba mulai lagi
+                    startGame();
+                });
+            
+        } else {
+             successMessage += `. GAGAL memenuhi syarat kerja (Min WPM ${MIN_WPM_REQUIREMENT}, Min Akurasi ${MIN_ACCURACY_REQUIREMENT}%)`;
+             alertMessage(successMessage, 'info');
+             // PERUBAHAN: Gagal memenuhi syarat, tetap auto-start untuk mencoba lagi
+             startGame();
+        }
+    };
+
+    // Pendaftaran fungsi global
+    window.startGame = startGame;
+    window.processInput = processInput;
+    window.addText = addText;
+    window.deleteText = deleteText;
+    window.transferCoins = transferCoins; 
+
+    // Inisialisasi: Mengatur status tampilan awal
+    window.onload = () => {
+        managementPanel.classList.add('hidden'); 
+    };
+
+</script>
+
+</body>
+</html>

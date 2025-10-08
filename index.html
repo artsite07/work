@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dompet Virtual Premium</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* Palet Dasar Premium: Deep Navy/Slate */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0F172A; /* Slate 900 */
+            color: #f3f4f6;
+            min-height: 100vh;
+        }
+        /* Gaya Kartu Dompet dengan Gradient dan Shadow */
+        .wallet-card {
+            background: linear-gradient(135deg, #1E293B, #0F172A);
+            border: 2px solid #334155;
+            box-shadow: 0 10px 40px rgba(6, 182, 212, 0.3); /* Cyan Glow */
+        }
+        /* Custom Pulse/Glow Animation for the Balance */
+        @keyframes glowing {
+            0% { text-shadow: 0 0 5px rgba(245, 158, 11, 0.4); }
+            50% { text-shadow: 0 0 20px rgba(245, 158, 11, 0.8), 0 0 30px rgba(6, 182, 212, 0.6); }
+            100% { text-shadow: 0 0 5px rgba(245, 158, 11, 0.4); }
+        }
+        /* Kelas diterapkan pada elemen saldo utama */
+        .glowing-balance {
+            animation: glowing 3s ease-in-out infinite;
+        }
+        /* Styling untuk placeholder loading */
+        .loading-text {
+            color: #94A3B8; /* Slate 400 */
+        }
+    </style>
+</head>
+<body class="h-screen p-4 flex flex-col items-center justify-center overflow-hidden">
+
+    <div class="max-w-xl w-full p-8 rounded-3xl wallet-card">
+        
+        <div class="border-b border-cyan-700/50 pb-4 mb-8">
+            <h1 class="text-4xl font-extrabold text-cyan-400 flex items-center">
+                <i class="fas fa-money-check-alt mr-3 text-5xl"></i> Dompet Gaji Digital
+            </h1>
+            <p class="text-md text-gray-400 mt-2 tracking-wider">Saldo Koin Hasil Kerja</p>
+        </div>
+        
+        <div class="bg-gray-900/50 p-8 rounded-2xl shadow-inner mb-6 border border-gray-700">
+            <p class="text-xl text-cyan-300 mb-4 tracking-wider uppercase">Saldo Tersedia:</p>
+            
+            <div class="flex items-end justify-between">
+                <span id="eWalletBalance" class="text-7xl font-black text-amber-400 leading-none glowing-balance">
+                    <span class="loading-text text-5xl"><i class="fas fa-spinner fa-spin"></i></span>
+                </span>
+                <span class="text-4xl font-extrabold text-amber-400">KOIN</span>
+            </div>
+            
+            <div class="mt-6 pt-4 border-t border-gray-700/50 flex justify-between text-sm text-gray-500">
+                <span>Status: <span class="text-green-500">Aktif</span></span>
+                <span>ID Akun: <span class="text-gray-400">USER_001</span></span>
+            </div>
+        </div>
+
+        <p class="text-center text-sm text-gray-500 italic pt-4">
+            Ini adalah total koin yang telah berhasil Anda transfer dari sesi pekerjaan input data.
+        </p>
+        
+    </div>
+
+    <script type="module">
+        // Import modul Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+        // --- 1. Konfigurasi dan Inisialisasi Firebase ---
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : JSON.stringify({
+          apiKey: "AIzaSyBHpRt8cs00RI3rRcELKhkYRID5svpSZoY",
+          authDomain: "myyg4m5.firebaseapp.com",
+          databaseURL: "https://myyg4m5-default-rtdb.firebaseio.com",
+          projectId: "myyg4m5",
+          storageBucket: "myyg4m5.firebasestorage.app",
+          messagingSenderId: "204097552587",
+          appId: "1:204097552587:web:bd2dbb5d2c02c342fc5b4e"
+        }));
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        
+        const USER_ID = 'user_001'; 
+        const walletRef = ref(db, `balances/${USER_ID}/e_wallet_balance`); 
+        
+        // Referensi Elemen UI
+        const balanceDisplay = document.getElementById('eWalletBalance');
+        
+        // Variabel untuk menyimpan saldo terakhir yang ditampilkan
+        let currentDisplayedBalance = 0;
+
+        // --- FUNGSI BARU: Animasi Angka Bertambah ---
+        const animateCount = (targetValue) => {
+            // Jika target adalah 0, langsung set dan keluar
+            if (targetValue === 0) {
+                balanceDisplay.textContent = 0;
+                currentDisplayedBalance = 0;
+                return;
+            }
+
+            const duration = 1500; // Durasi animasi dalam milidetik (1.5 detik)
+            const startTimestamp = performance.now();
+            
+            // Nilai awal yang akan dihitung (saldo terakhir yang ditampilkan)
+            const startValue = currentDisplayedBalance;
+
+            const step = (timestamp) => {
+                const elapsed = timestamp - startTimestamp;
+                const progress = Math.min(elapsed / duration, 1); // Batasi progress hingga 1
+                
+                // Hitung nilai saat ini
+                const currentValue = Math.floor(startValue + (targetValue - startValue) * progress);
+
+                balanceDisplay.textContent = currentValue;
+
+                if (progress < 1) {
+                    // Lanjutkan animasi frame berikutnya
+                    requestAnimationFrame(step);
+                } else {
+                    // Animasi selesai, pastikan nilainya adalah target
+                    balanceDisplay.textContent = targetValue;
+                    currentDisplayedBalance = targetValue;
+                }
+            };
+            
+            // Mulai loop animasi
+            requestAnimationFrame(step);
+        };
+
+        // --- 2. Fungsi Memuat Saldo Dompet Virtual dari Firebase ---
+        const loadWalletBalance = () => {
+            // onValue secara real-time mendengarkan perubahan
+            onValue(walletRef, (snapshot) => {
+                const eWalletBalance = snapshot.val() || 0; 
+                
+                // Hapus placeholder loading sebelum memulai animasi
+                const loadingTextSpan = balanceDisplay.querySelector('.loading-text');
+                if (loadingTextSpan) loadingTextSpan.remove();
+                
+                // Panggil fungsi animasi
+                animateCount(eWalletBalance);
+                
+                // Pastikan kelas glowing kembali
+                if (!balanceDisplay.classList.contains('glowing-balance')) {
+                    balanceDisplay.classList.add('glowing-balance');
+                }
+            }, (error) => {
+                console.error("Gagal memuat saldo dompet dari Firebase:", error);
+                balanceDisplay.innerHTML = `<span class="text-xl text-red-400">ERROR</span>`;
+                balanceDisplay.classList.remove('glowing-balance');
+            });
+        };
+
+        // Mulai memuat saldo saat DOM siap
+        document.addEventListener('DOMContentLoaded', loadWalletBalance);
+    </script>
+
+</body>
+</html>
